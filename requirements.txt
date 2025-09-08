@@ -1,0 +1,16 @@
+# 地址公寓识别与门禁码提取工具依赖
+requests>=2.28.0
+pandas>=1.5.0
+numpy>=1.24.0
+python-dotenv>=0.19.0
+click>=8.0.0
+colorama>=0.4.4
+tqdm>=4.64.0
+jsonschema>=4.0.0
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Web界面依赖
+Flask>=2.3.0
+Flask-CORS>=4.0.0
+Werkzeug>=2.3.0

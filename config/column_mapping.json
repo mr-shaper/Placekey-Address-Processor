@@ -1,0 +1,65 @@
+{
+  "description": "列名映射配置文件 - 将CSV文件中的列名映射到Placekey API所需的标准字段名",
+  "mapping": {
+    "address": "street_address",
+    "addr": "street_address",
+    "street": "street_address",
+    "street_addr": "street_address",
+    "full_address": "street_address",
+    "地址": "street_address",
+    "街道地址": "street_address",
+    
+    "city_name": "city",
+    "城市": "city",
+    "市": "city",
+    
+    "state": "region",
+    "province": "region",
+    "州": "region",
+    "省": "region",
+    "省份": "region",
+    
+    "zip": "postal_code",
+    "zipcode": "postal_code",
+    "zip_code": "postal_code",
+    "postcode": "postal_code",
+    "邮编": "postal_code",
+    "邮政编码": "postal_code",
+    
+    "country": "iso_country_code",
+    "country_code": "iso_country_code",
+    "国家": "iso_country_code",
+    "国家代码": "iso_country_code",
+    "收件人国家": "iso_country_code",
+    "收件人省/州": "region",
+    "收件人城市": "city",
+    "收件人邮编": "postal_code",
+    "手机号": "phone",
+    "邮箱": "email",
+    
+    "lat": "latitude",
+    "纬度": "latitude",
+    
+    "lng": "longitude",
+    "lon": "longitude",
+    "long": "longitude",
+    "经度": "longitude"
+  },
+  "examples": {
+    "example_1": {
+      "description": "标准英文列名",
+      "original_columns": ["address", "city", "state", "zip", "country"],
+      "mapped_columns": ["street_address", "city", "region", "postal_code", "iso_country_code"]
+    },
+    "example_2": {
+      "description": "中文列名",
+      "original_columns": ["地址", "城市", "省份", "邮编", "国家"],
+      "mapped_columns": ["street_address", "city", "region", "postal_code", "iso_country_code"]
+    },
+    "example_3": {
+      "description": "混合格式",
+      "original_columns": ["full_address", "city_name", "state", "zipcode", "lat", "lng"],
+      "mapped_columns": ["street_address", "city", "region", "postal_code", "latitude", "longitude"]
+    }
+  }
+}

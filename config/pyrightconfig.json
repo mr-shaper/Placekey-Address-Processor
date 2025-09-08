@@ -1,0 +1,33 @@
+{
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*"
+    ],
+    "defineConstant": {
+        "DEBUG": true
+    },
+    "stubPath": "src",
+    "venvPath": ".",
+    "venv": "venv",
+    "executionEnvironments": [
+        {
+            "root": ".",
+            "pythonVersion": "3.8",
+            "pythonPlatform": "Darwin",
+            "extraPaths": [
+                "./src",
+                "./src/apartment_accesscode"
+            ]
+        }
+    ],
+    "typeCheckingMode": "basic",
+    "useLibraryCodeForTypes": true,
+    "autoSearchPaths": true,
+    "autoImportCompletions": true,
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": false
+}
