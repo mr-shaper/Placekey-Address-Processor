@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""地址公寓识别与门禁码提取工具 - 主入口文件"""
+"""Placekey地址处理器 - 主入口文件"""
 
 import sys
 import os

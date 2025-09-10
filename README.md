@@ -100,7 +100,7 @@ python main.py batch -i examples/input_sample.csv -o data/output/result.csv
 ## Project Structure | 项目结构
 
 ```
-apartment-accesscode/
+Placekey-Address-Processor/
 ├── CN_Introduction/       # 中文文档目录 (Chinese Documentation)
 │   ├── USER_GUIDE.md     # 用户使用指南
 │   ├── QUICK_START.md    # 快速开始指南

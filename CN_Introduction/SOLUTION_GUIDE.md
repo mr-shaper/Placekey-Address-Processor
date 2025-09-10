@@ -1,15 +1,16 @@
-# 地址公寓识别处理方案
+# Placekey地址处理解决方案
 
 ## 📋 方案概述
 
-本方案整合了现有公寓识别规则与Placekey API，为地址数据提供智能的公寓识别和标准化处理服务。系统采用双重处理机制，确保高准确率的公寓识别结果。
+本方案整合了地址标准化、公寓识别和Placekey API集成，为地址数据提供智能的处理和位置智能服务。系统采用多层处理机制，确保高准确率的地址处理结果。
 
 ## 🎯 核心功能
 
-### 1. 智能公寓识别
-- **现有规则引擎**: 基于完整的公寓识别规则集
-- **API增强处理**: 可选的Placekey API增强功能
-- **智能整合**: 自动整合两种结果，标记冲突
+### 1. 智能地址处理
+- **地址标准化**: 统一地址格式和规范化处理
+- **公寓类型识别**: 基于完整的公寓识别规则集
+- **Placekey集成**: Placekey API获取位置智能数据
+- **智能整合**: 自动整合多种数据源，提供完整的地址信息
 
 ### 2. 多级置信度分类
 - **高置信度 (95分)**: apt, apartment, unit, suite等明确标识
@@ -119,7 +120,7 @@ United States,Texas,Houston,77001,Texas~~~Harris~~~Houston~~~321 Main St Suite 5
 
 ```bash
 # 进入项目目录
-cd /Users/harrison/pythonenv/projects/Apartment-accesscode
+cd /Users/harrison/pythonenv/projects/Placekey-Address-Processor
 
 # 快速安装（推荐）
 ./run.sh setup

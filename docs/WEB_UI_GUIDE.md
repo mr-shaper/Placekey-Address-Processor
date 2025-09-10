@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Web UI provides an intuitive interface for processing address data and extracting apartment access codes. It offers real-time processing, configuration management, and result visualization.
+The Web UI provides an intuitive interface for processing address data with standardization, apartment identification, and Placekey integration. It offers real-time processing, configuration management, and result visualization.
 
 ## Getting Started
 

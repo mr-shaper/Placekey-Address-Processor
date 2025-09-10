@@ -1,17 +1,18 @@
-# Apartment AccessCode - 发布说明
+# Placekey Address Processor - 发布说明
 
 ## 版本信息
-- **版本号**: v1.0.0
+- **版本号**: v2.0.0
 - **发布日期**: 2025年1月
 - **状态**: 生产就绪
 
 ## 项目概述
 
-地址公寓识别与门禁码提取工具 - 基于Placekey API的智能地址处理系统，专门用于识别公寓地址并提取门禁码(access_code)。
+Placekey地址处理器 - 基于Placekey API的智能地址处理系统，提供地址标准化、公寓识别和位置智能服务。
 
 ## 核心功能
 
-### 🏠 智能公寓识别
+### 🏠 智能地址处理
+- 地址标准化和验证
 - 基于规则的公寓地址识别
 - 多级置信度分类系统
 - 支持多种公寓格式识别
@@ -19,6 +20,7 @@
 ### 🔗 Placekey API集成
 - 高精度地址标准化
 - 地理编码和反向地理编码
+- 位置智能服务
 - 批量处理优化
 
 ### 📊 批量处理能力
@@ -82,7 +84,7 @@ http://localhost:5001
 ## 项目结构
 
 ```
-Apartment-accesscode-release/
+Placekey-Address-Processor/
 ├── src/apartment_accesscode/     # 核心模块
 ├── ui/                          # Web界面
 ├── docs/                        # 英文文档
@@ -133,8 +135,8 @@ MIT License - 详见 LICENSE 文件
 ## 支持与反馈
 
 如有问题或建议，请通过以下方式联系：
-- 邮箱：support@apartment-accesscode.com
-- 项目地址：https://github.com/apartment-accesscode/apartment-accesscode
+- 邮箱：support@placekey-processor.com
+- 项目地址：https://github.com/placekey-processor/placekey-address-processor
 
 ---
 

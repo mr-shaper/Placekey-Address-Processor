@@ -2,12 +2,14 @@
 
 ## Solution Overview
 
-The Apartment Access Code Extraction Tool is an intelligent address processing system that combines rule-based pattern matching with Placekey API integration to accurately identify apartment addresses and extract access codes.
+The Placekey Address Processor is an intelligent address processing system that combines address standardization, apartment identification, and Placekey API integration to provide comprehensive location intelligence services.
 
 ## Core Features
 
-### Intelligent Apartment Recognition
+### Intelligent Address Processing
+- **Address Standardization**: Normalize and validate address formats
 - **Multi-pattern Detection**: Supports various apartment formats (Apt, Unit, Suite, #, etc.)
+- **Placekey Integration**: Seamless integration with Placekey API for location intelligence
 - **Confidence Scoring**: Provides reliability scores for each detection
 - **False Positive Filtering**: Advanced logic to reduce incorrect identifications
 
@@ -35,7 +37,7 @@ The Apartment Access Code Extraction Tool is an intelligent address processing s
                                 │                        │
                                 ▼                        ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Output CSV    │◀───│  Result Merger   │◀───│  Access Code    │
+│   Output CSV    │◀───│  Result Merger   │◀───│  Unit Number    │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
@@ -86,7 +88,7 @@ Customize CSV column mapping in `config/column_mapping.json`:
 2. **Pattern Matching**: Apply apartment detection rules
 3. **API Integration**: Enhance with Placekey data (if enabled)
 4. **Confidence Calculation**: Assign reliability scores
-5. **Access Code Extraction**: Extract apartment/unit numbers
+5. **Unit Number Extraction**: Extract apartment/unit numbers
 
 ### Output Generation
 1. **Result Compilation**: Merge all processing results
