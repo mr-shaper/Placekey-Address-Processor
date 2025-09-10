@@ -12,7 +12,7 @@ import json
 from datetime import datetime
 from typing import Dict, Any
 
-from .config import config
+from . import config as config_module
 from .placekey_client import PlacekeyClient, PlacekeyAPIError
 from .address_processor import AddressProcessor
 from .apartment_handler import ApartmentHandler
@@ -41,7 +41,7 @@ def single(address, city, state, zip, country, latitude, longitude, output, verb
     """处理单个地址"""
     try:
         # 验证配置
-        validation = config.validate_config()
+        validation = config_module.validate_config()
         if not validation['valid']:
             click.echo(f"配置错误: {', '.join(validation['issues'])}", err=True)
             sys.exit(1)
@@ -110,7 +110,7 @@ def batch(input_file, output_file, mapping, aggregate, workers, report):
     """批量处理CSV文件"""
     try:
         # 验证配置
-        validation = config.validate_config()
+        validation = config_module.validate_config()
         if not validation['valid']:
             click.echo(f"配置错误: {', '.join(validation['issues'])}", err=True)
             sys.exit(1)
@@ -201,7 +201,7 @@ def health():
     """检查API连接状态"""
     try:
         # 验证配置
-        validation = config.validate_config()
+        validation = config_module.validate_config()
         if not validation['valid']:
             click.echo(f"配置错误: {', '.join(validation['issues'])}", err=True)
             sys.exit(1)
@@ -226,16 +226,16 @@ def health():
 def config_info():
     """显示当前配置信息"""
     click.echo("=== 配置信息 ===")
-    click.echo(f"API密钥: {'已设置' if config.PLACEKEY_API_KEY else '未设置'}")
-    click.echo(f"API基础URL: {config.PLACEKEY_BASE_URL}")
-    click.echo(f"批处理大小: {config.BATCH_SIZE}")
-    click.echo(f"最大重试次数: {config.MAX_RETRIES}")
-    click.echo(f"重试延迟: {config.RETRY_DELAY}秒")
-    click.echo(f"日志级别: {config.LOG_LEVEL}")
-    click.echo(f"日志文件: {config.LOG_FILE}")
+    click.echo(f"API密钥: {'已设置' if config_module.PLACEKEY_API_KEY else '未设置'}")
+    click.echo(f"API基础URL: {config_module.PLACEKEY_BASE_URL}")
+    click.echo(f"批处理大小: {config_module.BATCH_SIZE}")
+    click.echo(f"最大重试次数: {config_module.MAX_RETRIES}")
+    click.echo(f"重试延迟: {config_module.RETRY_DELAY}秒")
+    click.echo(f"日志级别: {config_module.LOG_LEVEL}")
+    click.echo(f"日志文件: {config_module.LOG_FILE}")
     
     # 验证配置
-    validation = config.validate_config()
+    validation = config_module.validate_config()
     click.echo(f"\n配置状态: {'✅ 有效' if validation['valid'] else '❌ 无效'}")
     
     if not validation['valid']:

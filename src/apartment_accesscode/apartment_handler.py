@@ -9,7 +9,7 @@ import re
 import logging
 from typing import Dict, List, Optional, Tuple, Set, Any
 from collections import defaultdict
-from .config import config
+from . import config as config_module
 
 class ApartmentHandler:
     """公寓房号处理器类"""
@@ -24,7 +24,7 @@ class ApartmentHandler:
     def _compile_patterns(self):
         """编译公寓识别的正则表达式模式"""
         # 基础公寓关键词模式
-        apt_keywords = '|'.join(config.APARTMENT_KEYWORDS)
+        apt_keywords = '|'.join(config_module.APARTMENT_KEYWORDS)
         
         # 标准公寓模式：APT 5, UNIT A, SUITE 100等
         self.standard_apt_pattern = re.compile(
@@ -34,7 +34,7 @@ class ApartmentHandler:
         
         # 简化公寓模式：#5, -A, 3A等
         self.simple_apt_pattern = re.compile(
-            r'\b[#\-]\s*([A-Z0-9]+)\b|\b(\d+[A-Z])\b',
+            r'[#\-]\s*([A-Z0-9]+)(?=\s|$)|\b(\d+[A-Z])\b',
             re.IGNORECASE
         )
         

@@ -1,4 +1,4 @@
-# Apartment Access Code Extraction Tool | 地址公寓识别与门禁码提取工具
+# Placekey Address Processor / Placekey地址处理器
 
 [English](#english) | [中文](#中文)
 
@@ -6,15 +6,16 @@
 
 ## English
 
-An intelligent address processing system based on Placekey API, specifically designed to identify apartment information in addresses and extract access codes.
+### Overview
+A powerful Python application for processing apartment addresses with Placekey integration. This tool provides address standardization, apartment type identification, and batch processing capabilities through both command-line and web interfaces.
 
 ### Key Features
-
-- 🏠 **Smart Apartment Recognition**: Combines rule engine with Placekey API for dual verification
-- 🔑 **Access Code Extraction**: Automatically identifies and extracts access code information from addresses
-- 📊 **Batch Processing**: Supports CSV file batch processing for large-scale data handling
-- 🌐 **Web Interface**: Provides user-friendly web operation interface
-- 🔧 **Flexible Configuration**: Supports custom field mapping and processing parameters
+- **Address Standardization**: Normalize and validate address formats
+- **Apartment Detection**: Intelligent identification of apartment types and units
+- **Placekey Integration**: Seamless integration with Placekey API for location intelligence
+- **Batch Processing**: Handle large datasets efficiently
+- **Web Interface**: User-friendly web UI for easy operation
+- **Flexible Output**: Multiple output formats and customizable column mapping
 
 ### Quick Start
 

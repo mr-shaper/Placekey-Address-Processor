@@ -34,6 +34,9 @@
         .progress-container {
             display: none;
         }
+        .text-purple {
+            color: #6f42c1 !important;
+        }
     </style>
 </head>
 <body>
@@ -42,9 +45,25 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="text-center">
-                    <h1 class="display-4"><i class="bi bi-building"></i> 地址公寓识别工具</h1>
-                    <p class="lead text-muted">智能提取公寓地址中的门禁码(access_code)</p>
+                    <h1 class="display-4"><i class="bi bi-building"></i> 地址标准化与公寓识别工具</h1>
+                    <p class="lead text-muted">智能识别公寓地址、提取房号信息，并通过Placekey API进行地址标准化</p>
+                    <div class="alert alert-info mt-3">
+                        <h6><i class="bi bi-info-circle"></i> 工具功能说明</h6>
+                        <ul class="mb-0">
+                            <li><strong>地址解析：</strong>从地址字符串中识别和提取公寓房号</li>
+                            <li><strong>地址标准化：</strong>通过Placekey API获取标准化地址和地理坐标</li>
+                            <li><strong>数据增强：</strong>为地址数据添加唯一标识符和置信度信息</li>
+                            <li class="text-warning"><strong>注意：</strong>本工具无法获取实际的门禁码(ACCESS CODE)，仅能提取地址中的门牌号信息</li>
+                        </ul>
+                    </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 警告信息容器 -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div id="alerts-container"></div>
             </div>
         </div>
 
@@ -53,7 +72,7 @@
             <div class="col-12">
                 <div class="card" id="config-panel">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5><i class="bi bi-gear"></i> API配置</h5>
+                        <h5><i class="bi bi-gear"></i> 步骤1: API配置</h5>
                         <div>
                             <span class="badge bg-success" id="config-status-badge" style="display: none;">已配置</span>
                             <button class="btn btn-sm btn-outline-primary" id="toggle-config-btn">
@@ -115,11 +134,11 @@
         </div>
 
         <!-- 文件上传区域 -->
-        <div class="row mb-4">
+        <div class="row mb-4" id="file-section">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
-                        <h5><i class="bi bi-cloud-upload"></i> 步骤1: 上传CSV文件</h5>
+                        <h5><i class="bi bi-cloud-upload"></i> 步骤2: 上传CSV文件</h5>
                     </div>
                     <div class="card-body">
                         <div class="upload-area" id="upload-area">
@@ -163,6 +182,14 @@
                                                 <li class="text-muted small">示例: "10001"</li>
                                             </ul>
                                         </div>
+                                    </div>
+                                    <div class="alert alert-info mt-3">
+                                        <h6 class="mb-2"><i class="bi bi-lightbulb"></i> 地址格式支持</h6>
+                                        <ul class="mb-2">
+                                            <li><strong>标准格式：</strong>"123 Main St Apt 4B"</li>
+                                            <li><strong>波浪线分隔：</strong>"123 Main St~~~Apt 4B" (系统会自动识别并处理)</li>
+                                            <li><strong>其他分隔符：</strong>支持 #、UNIT、APT、STE 等常见公寓标识</li>
+                                        </ul>
                                     </div>
                                     <div class="alert alert-warning mt-3 mb-0">
                                         <small><i class="bi bi-exclamation-triangle"></i> 
@@ -230,6 +257,94 @@
             </div>
         </div>
 
+        <!-- 输出文件字段说明 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-header">
+                        <h5><i class="bi bi-file-earmark-spreadsheet"></i> 输出文件字段说明</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6 class="text-primary">原始数据字段</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>地址/street_address:</strong> 原始地址信息</li>
+                                    <li><strong>收件人城市:</strong> 城市信息</li>
+                                    <li><strong>收件人省/州:</strong> 州/省信息</li>
+                                    <li><strong>收件人邮编:</strong> 邮政编码</li>
+                                    <li><strong>收件人国家:</strong> 国家信息</li>
+                                </ul>
+                                
+                                <h6 class="text-warning mt-3">原规则分析</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>是否公寓_原规则:</strong> 原规则判断结果</li>
+                                    <li><strong>置信度_原规则:</strong> 原规则置信度(0-100)</li>
+                                    <li><strong>匹配关键词_原规则:</strong> 匹配的关键词</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <h6 class="text-success">Placekey API字段</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>placekey:</strong> 地址唯一标识符</li>
+                                    <li><strong>placekey_confidence:</strong> API匹配置信度</li>
+                                    <li><strong>placekey_matched_address:</strong> 标准化地址</li>
+                                    <li><strong>placekey_success:</strong> API调用是否成功</li>
+                                    <li><strong>placekey_error:</strong> API错误信息</li>
+                                    <li><strong>placekey_latitude:</strong> 纬度坐标</li>
+                                    <li><strong>placekey_longitude:</strong> 经度坐标</li>
+                                    <li><strong>placekey_address_components:</strong> 地址组件</li>
+                                </ul>
+                                
+                                <h6 class="text-purple mt-3">Placekey反向映射字段</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>reverse_mapping_success:</strong> 反向映射是否成功</li>
+                                    <li><strong>reverse_mapping_address:</strong> 反向映射获得的完整地址</li>
+                                    <li><strong>reverse_mapping_coordinates:</strong> 反向映射坐标信息</li>
+                                    <li><strong>reverse_mapping_latitude:</strong> 反向映射纬度</li>
+                                    <li><strong>reverse_mapping_longitude:</strong> 反向映射经度</li>
+                                    <li><strong>reverse_mapping_error:</strong> 反向映射错误信息</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <h6 class="text-info">增强分析字段</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>公寓类型_增强:</strong> 识别的公寓类型</li>
+                                    <li><strong>主地址_增强:</strong> 提取的主地址</li>
+                                    <li><strong>公寓信息_增强:</strong> 详细公寓信息</li>
+                                    <li><strong>unit_number:</strong> 提取的门牌号信息</li>
+                                </ul>
+                                
+                                <h6 class="text-dark mt-3">整合结果</h6>
+                                <ul class="list-unstyled small">
+                                    <li><strong>是否公寓_整合:</strong> 最终判断结果</li>
+                                    <li><strong>置信度_整合:</strong> 最终置信度</li>
+                                    <li><strong>匹配关键词_整合:</strong> 整合关键词</li>
+                                    <li><strong>处理状态:</strong> 处理状态信息</li>
+                                    <li><strong>冲突标记:</strong> 是否存在结果冲突</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <small><i class="bi bi-exclamation-triangle"></i> 
+                            <strong>重要说明：</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Placekey相关字段需要有效的API密钥才能填充数据</li>
+                                <li>反向映射功能通过Placekey获取更准确的地址信息和坐标</li>
+                                <li>unit_number字段提取的是地址中的门牌号信息，不是实际的门禁码</li>
+                                <li>整合结果综合了原规则和API分析的最佳判断</li>
+                                <li>反向映射仅在成功获取Placekey后执行，提供额外的地址验证</li>
+                            </ul>
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 处理结果 -->
         <div class="row mb-4" id="result-section" style="display: none;">
             <div class="col-12">
@@ -256,6 +371,7 @@
                                 </div>
                             </div>
                         </div>
+                        
                         <div class="mt-3 text-center">
                             <button class="btn btn-primary btn-lg" id="download-btn">
                                 <i class="bi bi-download"></i> 下载结果文件
@@ -264,6 +380,16 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Loading 组件 -->
+    <div id="loading" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+        <div class="text-center text-white">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="loading-text mt-2">处理中...</div>
         </div>
     </div>
 

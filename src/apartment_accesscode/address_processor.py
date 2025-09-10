@@ -8,7 +8,7 @@
 import re
 import logging
 from typing import Dict, List, Optional, Tuple, Any
-from .config import config
+from . import config as config_module
 from .placekey_client import PlacekeyClient
 
 class AddressProcessor:
@@ -30,7 +30,7 @@ class AddressProcessor:
     def _compile_patterns(self):
         """编译常用的正则表达式模式"""
         # 公寓单元模式
-        apt_keywords = '|'.join(config.APARTMENT_KEYWORDS)
+        apt_keywords = '|'.join(config_module.APARTMENT_KEYWORDS)
         self.apt_pattern = re.compile(
             rf'\b({apt_keywords})\s*[#\-\s]*([A-Z0-9]+)\b', 
             re.IGNORECASE
@@ -38,13 +38,13 @@ class AddressProcessor:
         
         # 街道后缀模式
         self.street_suffix_pattern = re.compile(
-            r'\b(' + '|'.join(config.ADDRESS_STANDARDIZATION['street_suffixes'].keys()) + r')\b',
+            r'\b(' + '|'.join(config_module.ADDRESS_STANDARDIZATION['street_suffixes'].keys()) + r')\b',
             re.IGNORECASE
         )
         
         # 方向词模式
         self.directional_pattern = re.compile(
-            r'\b(' + '|'.join(config.ADDRESS_STANDARDIZATION['directional'].keys()) + r')\b',
+            r'\b(' + '|'.join(config_module.ADDRESS_STANDARDIZATION['directional'].keys()) + r')\b',
             re.IGNORECASE
         )
         
@@ -218,14 +218,14 @@ class AddressProcessor:
         # 标准化街道后缀
         def replace_suffix(match):
             suffix = match.group(1).upper()
-            return config.ADDRESS_STANDARDIZATION['street_suffixes'].get(suffix, suffix)
+            return config_module.ADDRESS_STANDARDIZATION['street_suffixes'].get(suffix, suffix)
         
         address = self.street_suffix_pattern.sub(replace_suffix, address)
         
         # 标准化方向词
         def replace_directional(match):
             direction = match.group(1).upper()
-            return config.ADDRESS_STANDARDIZATION['directional'].get(direction, direction)
+            return config_module.ADDRESS_STANDARDIZATION['directional'].get(direction, direction)
         
         address = self.directional_pattern.sub(replace_directional, address)
         

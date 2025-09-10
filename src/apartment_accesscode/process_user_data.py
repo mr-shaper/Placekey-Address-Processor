@@ -14,7 +14,7 @@ import json
 from typing import Dict, Any
 
 from .integration_processor import IntegrationProcessor
-from .config import config
+from . import config as config_module_file
 
 @click.group()
 @click.version_option(version='1.0.0')
@@ -37,7 +37,7 @@ def process(input_file, output_file, sample, report, verbose):
     """处理用户CSV数据文件"""
     try:
         # 验证配置
-        validation = config.validate_config()
+        validation = config_module_file.validate_config()
         if not validation['valid']:
             click.echo(f"配置警告: {', '.join(validation['issues'])}", err=True)
             click.echo("部分功能可能受限，但现有规则仍可正常工作")
@@ -56,17 +56,19 @@ def process(input_file, output_file, sample, report, verbose):
         
         click.echo(f"读取到 {len(df)} 条记录")
         
-        # 检查必要的列
-        required_columns = ['地址']
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            click.echo(f"错误: 缺少必要的列: {', '.join(missing_columns)}", err=True)
-            click.echo("请确保CSV文件包含以下列:")
-            click.echo("- 地址 (必需)")
+        # 检查必要的列 - 支持多种地址字段名
+        address_fields = ['地址', 'street_address', 'address', 'Address', 'Street_Address']
+        has_address_field = any(field in df.columns for field in address_fields)
+        
+        if not has_address_field:
+            click.echo(f"错误: 缺少地址字段", err=True)
+            click.echo("请确保CSV文件包含以下地址字段之一:")
+            click.echo("- 地址 或 street_address 或 address (必需)")
             click.echo("- 收件人国家 (可选)")
             click.echo("- 收件人省/州 (可选)")
             click.echo("- 收件人城市 (可选)")
             click.echo("- 收件人邮编 (可选)")
+            click.echo(f"\n当前文件包含的列: {', '.join(df.columns.tolist())}")
             sys.exit(1)
         
         # 显示列信息
@@ -311,7 +313,7 @@ def _generate_report(stats: Dict[str, Any], processing_time: float,
 
 def process_csv_file(df, api_config=None):
     """
-    处理CSV文件数据
+    处理CSV文件数据 - 修复版本，避免config重新加载问题
     
     Args:
         df: pandas DataFrame
@@ -321,40 +323,36 @@ def process_csv_file(df, api_config=None):
         处理后的DataFrame
     """
     try:
-        # 初始化处理器
-        processor = IntegrationProcessor()
+        import logging
+        logger = logging.getLogger(__name__)
         
-        # 如果提供了API配置，设置到处理器中
-        if api_config and api_config.get('api_key') and api_config.get('secret_key'):
-            # 临时设置API配置
-            import os
-            original_api_key = os.environ.get('PLACEKEY_API_KEY')
-            original_secret_key = os.environ.get('PLACEKEY_SECRET_KEY')
-            
-            os.environ['PLACEKEY_API_KEY'] = api_config['api_key']
-            os.environ['PLACEKEY_SECRET_KEY'] = api_config['secret_key']
-            
-            try:
-                # 处理数据
-                result_df = processor.process_dataframe(df)
-            finally:
-                # 恢复原始环境变量
-                if original_api_key:
-                    os.environ['PLACEKEY_API_KEY'] = original_api_key
-                else:
-                    os.environ.pop('PLACEKEY_API_KEY', None)
-                    
-                if original_secret_key:
-                    os.environ['PLACEKEY_SECRET_KEY'] = original_secret_key
-                else:
-                    os.environ.pop('PLACEKEY_SECRET_KEY', None)
+        logger.debug(f"API配置调试: api_config={api_config}")
+        logger.debug(f"API配置类型: {type(api_config)}")
+        
+        # 直接传递API密钥给IntegrationProcessor，避免config重新加载
+        api_key_to_use = api_config.get('api_key') if api_config else None
+        logger.debug(f"提取的API密钥: {api_key_to_use[:10] + '...' if api_key_to_use else 'None'}")
+        
+        if api_key_to_use:
+            logger.debug(f"使用提供的API密钥: {api_key_to_use[:10]}...")
         else:
-            # 处理数据（不使用API）
-            result_df = processor.process_dataframe(df)
+            logger.warning("未提供API配置或API密钥为空，将使用默认配置")
+        
+        # 初始化处理器，直接传递API密钥
+        processor = IntegrationProcessor(api_key=api_key_to_use)
+        logger.debug("IntegrationProcessor初始化成功")
+        
+        # 处理数据
+        logger.debug(f"开始处理DataFrame，形状: {df.shape}")
+        result_df = processor.process_dataframe(df)
+        logger.debug(f"处理完成，结果DataFrame形状: {result_df.shape}")
         
         return result_df
         
     except Exception as e:
+        import traceback
+        logger.error(f"处理CSV文件失败: {str(e)}")
+        logger.error(f"错误堆栈: {traceback.format_exc()}")
         raise Exception(f"处理CSV文件失败: {str(e)}")
 
 if __name__ == '__main__':

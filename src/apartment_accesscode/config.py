@@ -20,7 +20,7 @@ class Config:
     PLACEKEY_BASE_URL = os.getenv('PLACEKEY_BASE_URL', 'https://api.placekey.io/v1')
     
     # 日志配置
-    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG')
     LOG_FILE = os.getenv('LOG_FILE', 'logs/placekey.log')
     LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     
@@ -59,6 +59,10 @@ class Config:
         'LEVEL', 'LVL',
         'PENTHOUSE', 'PH'
     ]
+    
+    # 文件路径配置
+    OUTPUT_DIR = os.getenv('OUTPUT_DIR', '/Users/harrison/pythonenv/projects/Apartment-accesscode-release/data/output')
+    TEMP_DIR = os.getenv('TEMP_DIR', '')
     
     # 地址标准化规则
     ADDRESS_STANDARDIZATION = {
@@ -115,3 +119,17 @@ class Config:
 
 # 创建全局配置实例
 config = Config()
+
+# 导出配置变量供其他模块使用
+PLACEKEY_API_KEY = Config.PLACEKEY_API_KEY
+PLACEKEY_BASE_URL = Config.PLACEKEY_BASE_URL
+BATCH_SIZE = Config.BATCH_SIZE
+MAX_RETRIES = Config.MAX_RETRIES
+RETRY_DELAY = Config.RETRY_DELAY
+REQUEST_TIMEOUT = Config.REQUEST_TIMEOUT
+REQUEST_HEADERS = Config.REQUEST_HEADERS
+ADDRESS_FIELDS = Config.ADDRESS_FIELDS
+APARTMENT_KEYWORDS = Config.APARTMENT_KEYWORDS
+ADDRESS_STANDARDIZATION = Config.ADDRESS_STANDARDIZATION
+OUTPUT_DIR = Config.OUTPUT_DIR
+TEMP_DIR = Config.TEMP_DIR

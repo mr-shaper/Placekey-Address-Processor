@@ -14,7 +14,7 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 
-from .config import config
+from . import config as config_module
 from .placekey_client import PlacekeyClient
 from .address_processor import AddressProcessor
 from .apartment_handler import ApartmentHandler
@@ -40,16 +40,16 @@ class BatchProcessor:
     def _setup_logging(self):
         """设置日志配置"""
         # 创建logs目录
-        log_dir = os.path.dirname(config.LOG_FILE)
+        log_dir = os.path.dirname(config_module.LOG_FILE)
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
         
         # 配置日志格式
         logging.basicConfig(
-            level=getattr(logging, config.LOG_LEVEL),
-            format=config.LOG_FORMAT,
+            level=getattr(logging, config_module.LOG_LEVEL),
+            format=config_module.LOG_FORMAT,
             handlers=[
-                logging.FileHandler(config.LOG_FILE, encoding='utf-8'),
+                logging.FileHandler(config_module.LOG_FILE, encoding='utf-8'),
                 logging.StreamHandler()
             ]
         )
@@ -145,7 +145,7 @@ class BatchProcessor:
             
             # 提取地址字段
             address_data = {}
-            for field in config.ADDRESS_FIELDS.keys():
+            for field in config_module.ADDRESS_FIELDS.keys():
                 if field in row and pd.notna(row[field]):
                     address_data[field] = str(row[field]).strip()
             
@@ -412,11 +412,11 @@ class BatchProcessor:
                 row['apartment_unit_type'] = apt_data.get('type')
                 row['apartment_unit_number'] = apt_data.get('number')
                 row['apartment_full'] = apt_data.get('full')
-                # 添加access_code字段，使用apartment_unit_number作为access_code
-                row['access_code'] = apt_data.get('number', '')
+                # 添加unit_number字段，使用apartment_unit_number作为unit_number
+                row['unit_number'] = apt_data.get('number', '')
         else:
             row['has_apartment'] = False
-            row['access_code'] = ''
+            row['unit_number'] = ''
         
         return row
     

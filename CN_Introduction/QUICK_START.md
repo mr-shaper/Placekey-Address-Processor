@@ -1,6 +1,6 @@
 # 🚀 快速使用指南
 
-地址公寓识别与门禁码提取工具的快速上手指南，专门用于处理包含公寓地址的CSV数据，自动提取门禁码(access_code)字段。
+Placekey地址处理器的快速上手指南，专门用于处理地址数据，提供地址标准化、公寓识别和Placekey集成功能。
 
 ## ⚡ 5分钟快速开始
 
@@ -8,16 +8,16 @@
 
 ```bash
 # 进入项目目录
-cd /Users/harrison/pythonenv/projects/Apartment-accesscode
+cd /Users/harrison/pythonenv/projects/Placekey-Address-Processor
 
 # 安装Python依赖
 pip install -r requirements.txt
 
 # 使用快速启动脚本（可选）
-./run.sh setup
+./start_processor.sh
 ```
 
-### 2. 配置API密钥（可选）
+### 2. 配置API密钥（必需）
 
 ```bash
 # 复制环境变量模板
@@ -27,27 +27,27 @@ cp config/.env.example .env
 # PLACEKEY_API_KEY=your_api_key_here
 ```
 
-**注意**: 即使没有API密钥，现有的公寓识别规则仍然可以正常工作！
+**注意**: Placekey API密钥是必需的，用于获取准确的位置信息和地址标准化。
 
 ### 3. 批量处理CSV数据
 
 #### 基础批量处理
 
 ```bash
-# 处理英文CSV文件
-python main.py batch -i data/input/input_sample.csv -o data/output/output_result.csv
+# 使用命令行处理器
+python placekey_processor.py
 
-# 处理中文CSV文件（使用列名映射）
-python main.py batch -i data/input/your_chinese_data.csv -o data/output/output_result.csv -m config/column_mapping.json
+# 使用专用处理模块
+python src/apartment_accesscode/process_user_data.py --input data/input/input_sample.csv --output data/output/output_result.csv
 ```
 
-#### 高级处理选项
+#### Web界面处理
 
 ```bash
-# 启用公寓聚合功能
-python main.py batch -i data/input/input.csv -o data/output/output.csv --aggregate
+# 启动Web服务器
+python ui/app.py
 
-# 调整并发处理数量
+# 然后在浏览器中访问 http://localhost:5001
 python main.py batch -i data/input/input.csv -o data/output/output.csv --max-workers 10
 
 # 查看处理统计报告

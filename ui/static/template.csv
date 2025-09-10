@@ -1,4 +1,5 @@
-地址,收件人国家,收件人省/州,收件人城市,收件人邮编
-"1234 Main St Apt 101, New York, NY 10001",美国,纽约州,纽约市,10001
-"5678 Oak Avenue Unit 205, Los Angeles, CA 90210",美国,加利福尼亚州,洛杉矶,90210
-"9012 Pine Street #303, Chicago, IL 60601",美国,伊利诺伊州,芝加哥,60601
+street_address,city,region,postal_code,iso_country_code,notes
+"1543 Mission Street APT 1","San Francisco","CA","94105","US","示例公寓地址"
+"123 Main Street UNIT 101","New York","NY","10001","US","单元格式示例"
+"456 Oak Avenue #2B","Los Angeles","CA","90210","US","井号格式示例"
+"789 Pine Street~~~Suite 3C","Seattle","WA","98101","US","波浪线分隔符示例"

@@ -9,7 +9,7 @@ import requests
 import time
 import logging
 from typing import Dict, List, Optional, Union, Any
-from .config import config
+from . import config as config_module
 
 class PlacekeyAPIError(Exception):
     """Placekey API异常类"""
@@ -25,16 +25,24 @@ class PlacekeyClient:
         Args:
             api_key: Placekey API密钥，如果不提供则从配置中获取
         """
-        self.api_key = api_key or config.PLACEKEY_API_KEY
-        self.base_url = config.PLACEKEY_BASE_URL
+        self.api_key = api_key or config_module.PLACEKEY_API_KEY
+        self.base_url = config_module.PLACEKEY_BASE_URL
         self.session = requests.Session()
         self.logger = logging.getLogger(__name__)
         
         if not self.api_key:
             raise PlacekeyAPIError("API密钥未设置，请在.env文件中配置PLACEKEY_API_KEY")
         
+        # 调试：显示API密钥信息（部分遮蔽）
+        masked_key = self.api_key[:8] + "..." + self.api_key[-4:] if len(self.api_key) > 12 else "***"
+        self.logger.info(f"初始化PlacekeyClient，API密钥: {masked_key}，长度: {len(self.api_key)}")
+        
         # 设置请求头
-        self.session.headers.update(config.get_api_headers())
+        headers = config_module.REQUEST_HEADERS.copy()
+        if self.api_key:
+            headers['apikey'] = self.api_key
+        self.session.headers.update(headers)
+        self.logger.info(f"请求头设置完成，apikey头长度: {len(headers.get('apikey', ''))}")
     
     def _make_request(self, endpoint: str, data: Dict[str, Any], 
                      retries: int = None) -> Dict[str, Any]:
@@ -50,7 +58,7 @@ class PlacekeyClient:
             API响应数据
         """
         if retries is None:
-            retries = config.MAX_RETRIES
+            retries = config_module.MAX_RETRIES
             
         url = f"{self.base_url}/{endpoint}"
         
@@ -59,14 +67,16 @@ class PlacekeyClient:
                 response = self.session.post(
                     url, 
                     json=data, 
-                    timeout=config.REQUEST_TIMEOUT
+                    timeout=config_module.REQUEST_TIMEOUT
                 )
                 
                 if response.status_code == 200:
-                    return response.json()
+                    response_data = response.json()
+                    self.logger.info(f"API响应成功，响应长度: {len(str(response_data))}字节，响应内容: {response_data}")
+                    return response_data
                 elif response.status_code == 429:  # 速率限制
                     if attempt < retries:
-                        wait_time = config.RETRY_DELAY * (2 ** attempt)
+                        wait_time = config_module.RETRY_DELAY * (2 ** attempt)
                         self.logger.warning(f"API速率限制，等待{wait_time}秒后重试")
                         time.sleep(wait_time)
                         continue
@@ -78,7 +88,7 @@ class PlacekeyClient:
                     
             except requests.exceptions.RequestException as e:
                 if attempt < retries:
-                    wait_time = config.RETRY_DELAY * (2 ** attempt)
+                    wait_time = config_module.RETRY_DELAY * (2 ** attempt)
                     self.logger.warning(f"请求异常，等待{wait_time}秒后重试: {str(e)}")
                     time.sleep(wait_time)
                     continue
@@ -100,13 +110,16 @@ class PlacekeyClient:
         # 验证必要字段
         self._validate_address_data(address_data)
         
-        # 构建请求数据
+        # 构建请求数据，添加fields参数获取更多信息
         request_data = {
-            "query": self._format_address_query(address_data)
+            "query": self._format_address_query(address_data),
+            "options": {
+                "fields": ["address_placekey", "building_placekey", "geocode", "confidence"]
+            }
         }
         
         try:
-            response = self._make_request("placekeys", request_data)
+            response = self._make_request("placekey", request_data)
             return self._process_single_response(response, address_data)
         except Exception as e:
             self.logger.error(f"获取Placekey失败: {str(e)}")
@@ -130,7 +143,7 @@ class PlacekeyClient:
             return []
         
         results = []
-        batch_size = config.BATCH_SIZE
+        batch_size = config_module.BATCH_SIZE
         
         # 分批处理
         for i in range(0, len(addresses), batch_size):
@@ -140,7 +153,7 @@ class PlacekeyClient:
             
             # 批次间延迟，避免API限制
             if i + batch_size < len(addresses):
-                time.sleep(0.1)
+                time.sleep(config_module.BATCH_DELAY)
         
         return results
     
@@ -169,7 +182,12 @@ class PlacekeyClient:
                     'error': str(e)
                 })
         
-        request_data = {"queries": queries}
+        request_data = {
+            "queries": queries,
+            "options": {
+                "fields": ["address_placekey", "building_placekey", "geocode", "confidence"]
+            }
+        }
         
         try:
             response = self._make_request("placekeys", request_data)
@@ -222,7 +240,7 @@ class PlacekeyClient:
         query = {}
         
         # 映射标准字段
-        for field, api_field in config.ADDRESS_FIELDS.items():
+        for field, api_field in config_module.ADDRESS_FIELDS.items():
             if field in address_data and address_data[field] is not None:
                 value = str(address_data[field]).strip()
                 if value:
@@ -242,21 +260,64 @@ class PlacekeyClient:
         Returns:
             处理后的结果
         """
-        if 'placekey' in response:
-            return {
+        self.logger.info(f"处理单个响应，响应内容: {response}，包含placekey: {'placekey' in response}")
+        
+        if 'placekey' in response and response['placekey']:
+            # 构建matched_address信息
+            matched_address = {
+                'placekey': response['placekey']
+            }
+            
+            # 添加address_placekey和building_placekey信息
+            if 'address_placekey' in response:
+                matched_address['address_placekey'] = response['address_placekey']
+                self.logger.info(f"获取到address_placekey: {response['address_placekey']}")
+            
+            if 'building_placekey' in response:
+                matched_address['building_placekey'] = response['building_placekey']
+                self.logger.info(f"获取到building_placekey: {response['building_placekey']}")
+            
+            # 提取地理坐标信息（从geocode字段中获取）
+            latitude = ''
+            longitude = ''
+            location_type = ''
+            if 'geocode' in response and response['geocode']:
+                geocode = response['geocode']
+                if 'location' in geocode:
+                    location = geocode['location']
+                    latitude = location.get('lat', '')
+                    longitude = location.get('lng', '')
+                location_type = geocode.get('location_type', '')
+            
+            result = {
                 'success': True,
                 'placekey': response['placekey'],
                 'input_address': input_address,
-                'matched_address': response.get('matched_address', {}),
-                'confidence': response.get('confidence', 'unknown')
+                'matched_address': matched_address,
+                'confidence': response.get('confidence', 'unknown'),
+                'latitude': latitude,
+                'longitude': longitude,
+                'location_type': location_type,
+                'address_components': matched_address,
+                'error': ''
             }
+            self.logger.info(f"成功处理响应，placekey: {result['placekey']}")
+            return result
         else:
-            return {
+            result = {
                 'success': False,
-                'error': 'No placekey returned',
+                'error': response.get('error', 'No placekey returned'),
                 'input_address': input_address,
+                'placekey': '',
+                'matched_address': {},
+                'confidence': '',
+                'latitude': '',
+                'longitude': '',
+                'address_components': {},
                 'response': response
             }
+            self.logger.warning(f"响应处理失败，原因: {result['error']}")
+            return result
     
     def _process_batch_response(self, response: Dict[str, Any], 
                               input_batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -278,18 +339,53 @@ class PlacekeyClient:
                 input_address = input_batch[query_id] if query_id < len(input_batch) else {}
                 
                 if 'placekey' in result:
+                    # 构建matched_address信息
+                    matched_address = {
+                        'placekey': result['placekey']
+                    }
+                    
+                    # 添加address_placekey和building_placekey信息
+                    if 'address_placekey' in result:
+                        matched_address['address_placekey'] = result['address_placekey']
+                    
+                    if 'building_placekey' in result:
+                        matched_address['building_placekey'] = result['building_placekey']
+                    
+                    # 提取地理坐标信息（从geocode字段中获取）
+                    latitude = ''
+                    longitude = ''
+                    location_type = ''
+                    if 'geocode' in result and result['geocode']:
+                        geocode = result['geocode']
+                        if 'location' in geocode:
+                            location = geocode['location']
+                            latitude = location.get('lat', '')
+                            longitude = location.get('lng', '')
+                        location_type = geocode.get('location_type', '')
+                    
                     results.append({
                         'success': True,
                         'placekey': result['placekey'],
                         'input_address': input_address,
-                        'matched_address': result.get('matched_address', {}),
-                        'confidence': result.get('confidence', 'unknown')
+                        'matched_address': matched_address,
+                        'confidence': result.get('confidence', 'unknown'),
+                        'latitude': latitude,
+                        'longitude': longitude,
+                        'location_type': location_type,
+                        'address_components': result.get('matched_address', {}),
+                        'error': ''
                     })
                 else:
                     results.append({
                         'success': False,
                         'error': result.get('error', 'No placekey returned'),
-                        'input_address': input_address
+                        'input_address': input_address,
+                        'placekey': '',
+                        'matched_address': {},
+                        'confidence': '',
+                        'latitude': '',
+                        'longitude': '',
+                        'address_components': {}
                     })
         else:
             # 如果没有results字段，为每个输入返回错误
@@ -297,7 +393,13 @@ class PlacekeyClient:
                 results.append({
                     'success': False,
                     'error': 'Invalid batch response format',
-                    'input_address': input_address
+                    'input_address': input_address,
+                    'placekey': '',
+                    'matched_address': {},
+                    'confidence': '',
+                    'latitude': '',
+                    'longitude': '',
+                    'address_components': {}
                 })
         
         return results

@@ -3,8 +3,9 @@
 class ApartmentProcessor {
     constructor() {
         this.currentFile = null;
+        this.currentFilename = null;
         this.outputFilename = null;
-        this.apiConfig = null;
+        this.isUploading = false;
         this.init();
     }
 
@@ -42,8 +43,12 @@ class ApartmentProcessor {
             }
         });
 
-        // 点击上传
-        uploadArea.addEventListener('click', () => {
+        // 点击上传 - 只在非按钮区域触发
+        uploadArea.addEventListener('click', (e) => {
+            // 如果点击的是按钮，不触发文件选择
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
+                return;
+            }
             fileInput.click();
         });
 
@@ -64,39 +69,59 @@ class ApartmentProcessor {
 
     setupApiConfigHandlers() {
         // 切换配置面板显示
-        document.getElementById('toggle-config-btn').addEventListener('click', () => {
-            const configBody = document.getElementById('config-body');
-            const toggleBtn = document.getElementById('toggle-config-btn');
-            
-            if (configBody.style.display === 'none') {
-                configBody.style.display = 'block';
-                toggleBtn.innerHTML = '<i class="bi bi-chevron-up"></i> 隐藏配置';
-            } else {
-                configBody.style.display = 'none';
-                toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
-            }
-        });
+        const toggleBtn = document.getElementById('toggle-config-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                const configBody = document.getElementById('config-body');
+                
+                if (configBody) {
+                    if (configBody.style.display === 'none') {
+                        configBody.style.display = 'block';
+                        toggleBtn.innerHTML = '<i class="bi bi-chevron-up"></i> 隐藏配置';
+                    } else {
+                        configBody.style.display = 'none';
+                        toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
+                    }
+                }
+            });
+        }
         
         // 保存配置
-        document.getElementById('config-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.saveApiConfig();
-        });
+        const configForm = document.getElementById('config-form');
+        if (configForm) {
+            configForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.saveApiConfig();
+            });
+        }
         
         // 测试连接
-        document.getElementById('test-config-btn').addEventListener('click', () => this.testApiConnection());
+        const testBtn = document.getElementById('test-config-btn');
+        if (testBtn) {
+            testBtn.addEventListener('click', () => this.testApiConnection());
+        }
         
         // 清除配置
-        document.getElementById('clear-config-btn').addEventListener('click', () => this.clearApiConfig());
+        const clearBtn = document.getElementById('clear-config-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearApiConfig());
+        }
     }
 
     loadApiConfig() {
         const config = this.getApiConfig();
         if (config) {
-            document.getElementById('api-key').value = config.api_key || '';
-            document.getElementById('api-url').value = config.api_url || 'https://api.placekey.io/v1/placekeys';
-            document.getElementById('batch-size').value = config.batch_size || 100;
-            document.getElementById('max-workers').value = config.max_workers || 5;
+            const apiKeyInput = document.getElementById('api-key');
+            if (apiKeyInput) apiKeyInput.value = config.api_key || '';
+            
+            const apiUrlInput = document.getElementById('api-url');
+            if (apiUrlInput) apiUrlInput.value = config.api_url || 'https://api.placekey.io/v1/placekeys';
+            
+            const batchSizeInput = document.getElementById('batch-size');
+            if (batchSizeInput) batchSizeInput.value = config.batch_size || 100;
+            
+            const maxWorkersInput = document.getElementById('max-workers');
+            if (maxWorkersInput) maxWorkersInput.value = config.max_workers || 5;
         }
     }
 
@@ -106,11 +131,16 @@ class ApartmentProcessor {
     }
 
     saveApiConfig() {
+        const apiKeyInput = document.getElementById('api-key');
+        const apiUrlInput = document.getElementById('api-url');
+        const batchSizeInput = document.getElementById('batch-size');
+        const maxWorkersInput = document.getElementById('max-workers');
+        
         const config = {
-            api_key: document.getElementById('api-key').value,
-            api_url: document.getElementById('api-url').value,
-            batch_size: parseInt(document.getElementById('batch-size').value),
-            max_workers: parseInt(document.getElementById('max-workers').value)
+            api_key: apiKeyInput ? apiKeyInput.value : '',
+            api_url: apiUrlInput ? apiUrlInput.value : 'https://api.placekey.io/v1/placekeys',
+            batch_size: batchSizeInput ? parseInt(batchSizeInput.value) : 100,
+            max_workers: maxWorkersInput ? parseInt(maxWorkersInput.value) : 5
         };
         
         localStorage.setItem('apartment_api_config', JSON.stringify(config));
@@ -121,14 +151,20 @@ class ApartmentProcessor {
         
         // 自动隐藏配置面板
         setTimeout(() => {
-            document.getElementById('config-body').style.display = 'none';
-            document.getElementById('toggle-config-btn').innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
+            const configBody = document.getElementById('config-body');
+            const toggleBtn = document.getElementById('toggle-config-btn');
+            
+            if (configBody) configBody.style.display = 'none';
+            if (toggleBtn) toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
         }, 1500);
     }
 
     testApiConnection() {
-        const apiKey = document.getElementById('api-key').value;
-        const apiUrl = document.getElementById('api-url').value;
+        const apiKeyInput = document.getElementById('api-key');
+        const apiUrlInput = document.getElementById('api-url');
+        
+        const apiKey = apiKeyInput ? apiKeyInput.value : '';
+        const apiUrl = apiUrlInput ? apiUrlInput.value : '';
         
         if (!apiKey) {
             this.showAlert('请先输入API密钥', 'warning');
@@ -136,6 +172,8 @@ class ApartmentProcessor {
         }
         
         const testBtn = document.getElementById('test-config-btn');
+        if (!testBtn) return;
+        
         testBtn.disabled = true;
         testBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> 测试中...';
         
@@ -173,10 +211,17 @@ class ApartmentProcessor {
             this.apiConfig = null;
             
             // 清空表单
-            document.getElementById('config-form').reset();
-            document.getElementById('api-url').value = 'https://api.placekey.io/v1/placekeys';
-            document.getElementById('batch-size').value = 100;
-            document.getElementById('max-workers').value = 5;
+            const configForm = document.getElementById('config-form');
+            if (configForm) configForm.reset();
+            
+            const apiUrlInput = document.getElementById('api-url');
+            if (apiUrlInput) apiUrlInput.value = 'https://api.placekey.io/v1/placekeys';
+            
+            const batchSizeInput = document.getElementById('batch-size');
+            if (batchSizeInput) batchSizeInput.value = 100;
+            
+            const maxWorkersInput = document.getElementById('max-workers');
+            if (maxWorkersInput) maxWorkersInput.value = 5;
             
             this.showAlert('API配置已清除', 'info');
             this.checkConfig();
@@ -187,21 +232,28 @@ class ApartmentProcessor {
         const config = this.getApiConfig();
         const statusBadge = document.getElementById('config-status-badge');
         const toggleBtn = document.getElementById('toggle-config-btn');
+        const configBody = document.getElementById('config-body');
         
         if (config && config.api_key) {
-            statusBadge.style.display = 'inline';
-            toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
+            if (statusBadge) statusBadge.style.display = 'inline';
+            if (toggleBtn) toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
             // 如果已配置，默认隐藏配置面板
-            document.getElementById('config-body').style.display = 'none';
+            if (configBody) configBody.style.display = 'none';
         } else {
-            statusBadge.style.display = 'none';
-            toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
+            if (statusBadge) statusBadge.style.display = 'none';
+            if (toggleBtn) toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> 显示配置';
             // 如果未配置，默认显示配置面板
-            document.getElementById('config-body').style.display = 'block';
+            if (configBody) configBody.style.display = 'block';
         }
     }
 
     async handleFile(file) {
+        // 防止重复上传
+        if (this.isUploading) {
+            console.log('DEBUG: 文件正在上传中，忽略重复请求');
+            return;
+        }
+        
         if (!file.name.toLowerCase().endsWith('.csv')) {
             this.showAlert('请选择CSV文件', 'warning');
             return;
@@ -213,6 +265,7 @@ class ApartmentProcessor {
         }
 
         this.currentFile = file;
+        this.isUploading = true;
         this.showLoading('正在读取文件...');
 
         try {
@@ -227,6 +280,8 @@ class ApartmentProcessor {
             const result = await response.json();
             
             if (result.success) {
+                this.currentFilename = result.filename;
+                console.log('DEBUG: 文件上传成功，保存文件名:', this.currentFilename);
                 this.showPreview(result.preview);
                 document.getElementById('file-section').style.display = 'none';
                 document.getElementById('preview-section').style.display = 'block';
@@ -238,6 +293,7 @@ class ApartmentProcessor {
             this.showAlert('上传失败: ' + error.message, 'danger');
         } finally {
             this.hideLoading();
+            this.isUploading = false;
         }
     }
 
@@ -274,7 +330,8 @@ class ApartmentProcessor {
     }
 
     async processFile() {
-        if (!this.currentFile) {
+        console.log('DEBUG: processFile开始，currentFilename:', this.currentFilename);
+        if (!this.currentFilename) {
             this.showAlert('请先上传文件', 'warning');
             return;
         }
@@ -291,19 +348,26 @@ class ApartmentProcessor {
             
             // 获取API配置
             const apiConfig = this.getApiConfig();
+            console.log('DEBUG: 获取到的API配置:', apiConfig);
             
-            const formData = new FormData();
-            formData.append('file', this.currentFile);
+            const requestData = {
+                filename: this.currentFilename
+            };
+            console.log('DEBUG: 发送处理请求，数据:', requestData);
+            
             if (columnMapping) {
-                formData.append('column_mapping', JSON.stringify(columnMapping));
+                requestData.column_mapping = columnMapping;
             }
             if (apiConfig) {
-                formData.append('api_config', JSON.stringify(apiConfig));
+                requestData.api_config = apiConfig;
             }
 
             const response = await fetch('/api/process', {
                 method: 'POST',
-                body: formData
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
             });
 
             const result = await response.json();
@@ -311,7 +375,11 @@ class ApartmentProcessor {
             if (result.success) {
                 this.outputFilename = result.output_filename;
                 this.showResults(result.stats);
-                document.getElementById('results-section').style.display = 'block';
+                // 修复：使用正确的结果区域ID
+        const resultSection = document.getElementById('result-section');
+        if (resultSection) {
+            resultSection.style.display = 'block';
+        }
                 this.showAlert('处理完成！', 'success');
             } else {
                 this.showAlert('处理失败: ' + result.error, 'danger');
@@ -346,9 +414,21 @@ class ApartmentProcessor {
     }
 
     showResults(stats) {
-        document.getElementById('total-processed').textContent = stats.total_processed;
-        document.getElementById('apartments-found').textContent = stats.apartments_found;
-        document.getElementById('success-rate').textContent = (stats.success_rate * 100).toFixed(1) + '%';
+        // 修复元素ID匹配问题
+        const totalRecordsElement = document.getElementById('total-records');
+        const apartmentCountElement = document.getElementById('apartment-count');
+        const resultSection = document.getElementById('result-section');
+        
+        if (totalRecordsElement) {
+            totalRecordsElement.textContent = stats.total_processed || stats.total_records || 0;
+        }
+        
+        if (apartmentCountElement) {
+            apartmentCountElement.textContent = stats.apartments_found || stats.apartment_count || 0;
+        }
+        
+        // 显示结果区域
+        if (resultSection) resultSection.style.display = 'block';
     }
 
     downloadFile() {
@@ -358,24 +438,14 @@ class ApartmentProcessor {
     }
 
     downloadTemplate() {
-        const csvContent = 'address,street_address,city,state,postal_code\n' +
-                          '"123 Main St Apt 4B, New York, NY 10001","123 Main St Apt 4B","New York","NY","10001"\n' +
-                          '"456 Oak Ave Unit 2A, Los Angeles, CA 90210","456 Oak Ave Unit 2A","Los Angeles","CA","90210"\n' +
-                          '"789 Pine Rd Apt 1C, Chicago, IL 60601","789 Pine Rd Apt 1C","Chicago","IL","60601"';
-        
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', 'apartment_address_template.csv');
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        this.showAlert('CSV模板已下载', 'success');
+        try {
+            // 使用服务器端下载，确保跨平台兼容性
+            window.location.href = '/download_template';
+            this.showAlert('CSV模板下载已开始', 'success');
+        } catch (error) {
+            console.error('下载模板失败:', error);
+            this.showAlert('下载失败，请检查浏览器设置是否允许下载文件', 'danger');
+        }
     }
 
     toggleColumnMapping() {
@@ -434,25 +504,36 @@ class ApartmentProcessor {
     }
 
     showProgress() {
-        document.getElementById('progress-section').style.display = 'block';
+        const progressSection = document.getElementById('progress-section');
+        if (progressSection) progressSection.style.display = 'block';
     }
 
     hideProgress() {
-        document.getElementById('progress-section').style.display = 'none';
+        const progressSection = document.getElementById('progress-section');
+        if (progressSection) progressSection.style.display = 'none';
     }
 
     showLoading(message) {
         const loading = document.getElementById('loading');
-        loading.querySelector('.loading-text').textContent = message;
-        loading.style.display = 'flex';
+        if (loading) {
+            const loadingText = loading.querySelector('.loading-text');
+            if (loadingText) loadingText.textContent = message;
+            loading.style.display = 'flex';
+        }
     }
 
     hideLoading() {
-        document.getElementById('loading').style.display = 'none';
+        const loading = document.getElementById('loading');
+        if (loading) loading.style.display = 'none';
     }
 
     showAlert(message, type = 'info') {
         const alertsContainer = document.getElementById('alerts-container');
+        
+        if (!alertsContainer) {
+            console.warn('警告容器未找到，无法显示警告信息:', message);
+            return;
+        }
         
         const alert = document.createElement('div');
         alert.className = `alert alert-${type} alert-dismissible fade show`;
