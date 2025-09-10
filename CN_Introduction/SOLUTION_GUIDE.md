@@ -79,39 +79,39 @@ United States,Texas,Houston,77001,Texas~~~Harris~~~Houston~~~321 Main St Suite 5
 
 ## 📤 输出文件格式
 
-系统会保留所有原始字段，并添加以下识别结果字段：
+系统会保留所有原始字段，并添加以下处理结果字段：
 
-### 现有规则结果
-- `是否公寓_原规则` - 基于现有规则的判断 (TRUE/FALSE)
-- `置信度_原规则` - 置信度分数 (0-100)
-- `匹配关键词_原规则` - 匹配的关键词
+### 基础地址信息
+- `address` - 原始地址
+- `city` - 城市
+- `state` - 州/省
+- `zip_code` - 邮政编码
 
-### Placekey增强结果 (如果配置API)
+### 公寓识别结果
+- `is_apartment` - 是否为公寓地址 (true/false)
+- `apartment_type` - 公寓类型 (apartment/unit/suite/house)
+- `unit_number` - 单元号码
+- `confidence_score` - 识别置信度 (0-100)
+
+### Placekey增强结果
 - `placekey` - Placekey标识符
-- `placekey_confidence` - API置信度
-- `公寓类型_增强` - API识别的公寓类型
-- `主地址_增强` - 标准化主地址
-- `placekey_success` - API调用成功标记
-
-### 整合结果
-- `是否公寓_整合` - 综合判断结果
-- `置信度_整合` - 综合置信度
-- `匹配关键词_整合` - 综合关键词
-- `处理状态` - 处理状态说明
-- `冲突标记` - 结果冲突标记
+- `standardized_address` - 标准化地址
+- `latitude` - 纬度
+- `longitude` - 经度
+- `processing_status` - 处理状态
 
 ### 输出文件示例 (output_sample.csv)
 
 ```csv
-收件人国家,收件人省/州,收件人城市,收件人邮编,地址,手机号,邮箱,是否公寓_原规则,置信度_原规则,匹配关键词_原规则,placekey,placekey_confidence,公寓类型_增强,主地址_增强,placekey_success,是否公寓_整合,置信度_整合,匹配关键词_整合,处理状态,冲突标记
-United States,California,Grand terrace,92324,California~~~San Bernardino~~~Colton~~~2270 Cahuilla St Apt 154,(+1)6304187558,user1@example.com,TRUE,95,apt(Apt),@abc-def-ghi,high,apartment,2270 Cahuilla St,TRUE,TRUE,95,apt(Apt),成功处理,FALSE
-United States,California,San diego,92115,California~~~San Diego~~~San Diego~~~4340 44th St Apt 529,(+1)6196395707,user2@example.com,TRUE,95,apt(Apt),@xyz-123-456,high,apartment,4340 44th St,TRUE,TRUE,95,apt(Apt),成功处理,FALSE
-United States,California,Sacramento,95828,California~~~Sacramento~~~Sacramento~~~6100 48th Ave Apt 5208,(+1)9162249125,user3@example.com,TRUE,95,apt(Apt),@def-789-abc,high,apartment,6100 48th Ave,TRUE,TRUE,95,apt(Apt),成功处理,FALSE
-United States,California,Oakland,94612,California~~~Alameda~~~Oakland~~~1950 Broadway # 809,(+1)8134994335,user4@example.com,TRUE,60,#number(# 809),@ghi-456-def,medium,unit,1950 Broadway,TRUE,TRUE,70,#number(# 809),成功处理,FALSE
-United States,California,San lorenzo,94541,California~~~Alameda~~~Hayward~~~659 Paradise Blvd apt B,(+1)5102305289,user5@example.com,TRUE,95,apt(apt),@jkl-012-ghi,high,apartment,659 Paradise Blvd,TRUE,TRUE,95,apt(apt),成功处理,FALSE
-United States,California,Los Angeles,90210,California~~~Los Angeles~~~Los Angeles~~~123 Main Street,(+1)2135551234,user6@example.com,FALSE,0,,@mno-345-jkl,low,house,123 Main Street,TRUE,FALSE,0,,成功处理,FALSE
-United States,New York,New York,10001,New York~~~New York~~~New York~~~789 Broadway Unit 12A,(+1)2125551234,user7@example.com,TRUE,95,unit(Unit),@pqr-678-mno,high,unit,789 Broadway,TRUE,TRUE,95,unit(Unit),成功处理,FALSE
-United States,Texas,Houston,77001,Texas~~~Harris~~~Houston~~~321 Main St Suite 500,(+1)7135551234,user8@example.com,TRUE,95,suite(Suite),@stu-901-pqr,high,suite,321 Main St,TRUE,TRUE,95,suite(Suite),成功处理,FALSE
+address,city,state,zip_code,is_apartment,apartment_type,unit_number,confidence_score,placekey,standardized_address,latitude,longitude,processing_status
+"2270 Cahuilla St Apt 154","Grand Terrace","CA","92324",true,"apartment","154",95,"@abc-def-ghi","2270 Cahuilla St",34.0333,-117.3136,"success"
+"4340 44th St Apt 529","San Diego","CA","92115",true,"apartment","529",95,"@xyz-123-456","4340 44th St",32.7157,-117.1611,"success"
+"6100 48th Ave Apt 5208","Sacramento","CA","95828",true,"apartment","5208",95,"@def-789-abc","6100 48th Ave",38.5816,-121.4944,"success"
+"1950 Broadway # 809","Oakland","CA","94612",true,"unit","809",70,"@ghi-456-def","1950 Broadway",37.8044,-122.2712,"success"
+"659 Paradise Blvd apt B","San Lorenzo","CA","94541",true,"apartment","B",95,"@jkl-012-ghi","659 Paradise Blvd",37.6810,-122.1247,"success"
+"123 Main Street","Los Angeles","CA","90210",false,"house","",85,"@mno-345-jkl","123 Main Street",34.0522,-118.2437,"success"
+"789 Broadway Unit 12A","New York","NY","10001",true,"unit","12A",95,"@pqr-678-mno","789 Broadway",40.7128,-74.0060,"success"
+"321 Main St Suite 500","Houston","TX","77001",true,"suite","500",95,"@stu-901-pqr","321 Main St",29.7604,-95.3698,"success"
 ```
 
 ## 🚀 使用方法
