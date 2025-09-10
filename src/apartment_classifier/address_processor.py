@@ -64,13 +64,15 @@ class AddressProcessor:
         ]
     
     def process_address(self, address_data: Dict[str, Any], 
-                       standardize: bool = True) -> Dict[str, Any]:
+                       standardize: bool = True, 
+                       use_precision_optimization: bool = True) -> Dict[str, Any]:
         """
         处理单个地址
         
         Args:
             address_data: 原始地址数据
             standardize: 是否进行标准化处理
+            use_precision_optimization: 是否使用精度优化
             
         Returns:
             处理结果
@@ -88,8 +90,11 @@ class AddressProcessor:
             # 3. 验证地址完整性
             validation_result = self.validate_address_completeness(standardized_data)
             
-            # 4. 调用Placekey API
-            placekey_result = self.client.get_placekey(standardized_data)
+            # 4. 获取Placekey（使用精度优化或标准方法）
+            if use_precision_optimization:
+                placekey_result = self.get_optimized_placekey(address_data)
+            else:
+                placekey_result = self.client.get_placekey(standardized_data)
             
             # 5. 合并结果
             result = {
@@ -230,6 +235,190 @@ class AddressProcessor:
         address = self.directional_pattern.sub(replace_directional, address)
         
         return address.strip()
+    
+    def get_optimized_placekey(self, address_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        获取优化的Placekey结果
+        使用多种策略来提高地址精度
+        
+        Args:
+            address_data: 地址数据
+            
+        Returns:
+            优化后的Placekey结果
+        """
+        strategies = []
+        
+        # 策略1: 原始地址
+        strategies.append({
+            'name': '原始地址',
+            'data': address_data,
+            'priority': 1
+        })
+        
+        # 策略2: 移除公寓号（如果存在）
+        if 'street_address' in address_data:
+            main_addr, apt_unit = self.extract_apartment_info(address_data['street_address'])
+            if apt_unit:  # 如果有公寓号
+                no_apt_data = address_data.copy()
+                no_apt_data['street_address'] = main_addr.strip()
+                strategies.append({
+                    'name': '移除公寓号',
+                    'data': no_apt_data,
+                    'priority': 2
+                })
+        
+        # 策略3: 标准化地址
+        cleaned = self.clean_address_data(address_data)
+        standardized = self.standardize_address(cleaned)
+        strategies.append({
+            'name': '标准化地址',
+            'data': standardized,
+            'priority': 3
+        })
+        
+        # 执行所有策略并评估结果
+        results = []
+        for strategy in strategies:
+            try:
+                result = self.client.get_placekey(strategy['data'])
+                if result.get('success'):
+                    # 计算精度评分
+                    precision_score = self._calculate_precision_score(result)
+                    result['strategy_name'] = strategy['name']
+                    result['strategy_priority'] = strategy['priority']
+                    result['precision_score'] = precision_score
+                    result['test_address'] = strategy['data']
+                    results.append(result)
+            except Exception as e:
+                self.logger.warning(f"策略 '{strategy['name']}' 失败: {str(e)}")
+        
+        if not results:
+            return {
+                'success': False,
+                'error': '所有策略都失败了',
+                'strategies_tested': len(strategies)
+            }
+        
+        # 选择最佳结果
+        best_result = self._select_best_placekey_result(results)
+        
+        # 添加精度分析信息
+        best_result['precision_analysis'] = {
+            'strategies_tested': len(strategies),
+            'successful_strategies': len(results),
+            'all_results': results,
+            'precision_notes': self._generate_precision_notes(results)
+        }
+        
+        return best_result
+    
+    def _calculate_precision_score(self, result: Dict[str, Any]) -> float:
+        """
+        计算Placekey结果的精度评分
+        
+        Args:
+            result: Placekey API结果
+            
+        Returns:
+            精度评分 (0-100)
+        """
+        if not result.get('success'):
+            return 0.0
+        
+        score = 50.0  # 基础分
+        
+        # 根据位置类型调整分数
+        location_type = result.get('location_type', '').upper()
+        if location_type == 'ROOFTOP':
+            score += 40  # 最高精度 - 精确到建筑物屋顶
+        elif location_type == 'RANGE_INTERPOLATED':
+            score += 20  # 中等精度 - 基于地址范围插值
+        elif location_type == 'GEOMETRIC_CENTER':
+            score += 10  # 较低精度 - 几何中心
+        elif location_type == 'APPROXIMATE':
+            score += 5   # 最低精度 - 近似位置
+        
+        # 根据置信度调整分数
+        confidence = result.get('confidence', '').lower()
+        if confidence == 'high':
+            score += 10
+        elif confidence == 'medium':
+            score += 5
+        
+        # 如果有坐标信息，加分
+        if result.get('latitude') and result.get('longitude'):
+            score += 5
+        
+        # 如果有building_placekey，说明精度更高
+        if result.get('matched_address', {}).get('building_placekey'):
+            score += 5
+        
+        return min(score, 100.0)
+    
+    def _select_best_placekey_result(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        从多个Placekey结果中选择最佳的
+        
+        Args:
+            results: Placekey结果列表
+            
+        Returns:
+            最佳结果
+        """
+        if not results:
+            return {'success': False, 'error': 'No valid results'}
+        
+        # 按精度评分排序，评分相同时按策略优先级排序
+        results.sort(key=lambda x: (x.get('precision_score', 0), -x.get('strategy_priority', 999)), reverse=True)
+        
+        return results[0]
+    
+    def _generate_precision_notes(self, results: List[Dict[str, Any]]) -> List[str]:
+        """
+        生成精度说明
+        
+        Args:
+            results: 所有结果
+            
+        Returns:
+            精度说明列表
+        """
+        notes = []
+        
+        if not results:
+            return ['无法获取任何Placekey结果']
+        
+        # 分析位置类型
+        location_types = [r.get('location_type', 'unknown') for r in results]
+        unique_types = set(location_types)
+        
+        if 'ROOFTOP' in unique_types:
+            notes.append('获得了屋顶级别的高精度定位')
+        elif all(lt == 'RANGE_INTERPOLATED' for lt in location_types):
+            notes.append('所有结果都是基于地址范围插值，说明该地址在数据库中没有精确的GPS记录')
+            notes.append('这可能导致门牌号与实际位置存在偏差（如2270变成2260）')
+        
+        # 分析Placekey一致性
+        unique_placekeys = set(r.get('placekey', '') for r in results)
+        if len(unique_placekeys) > 1:
+            notes.append(f'不同地址格式产生了{len(unique_placekeys)}个不同的Placekey')
+            notes.append('已选择精度评分最高的结果')
+        else:
+            notes.append('所有地址格式产生相同的Placekey，结果一致性良好')
+        
+        # 精度评分说明
+        best_score = max(r.get('precision_score', 0) for r in results)
+        if best_score >= 90:
+            notes.append(f'精度评分{best_score:.1f}/100，定位精度很高')
+        elif best_score >= 70:
+            notes.append(f'精度评分{best_score:.1f}/100，定位精度良好')
+        elif best_score >= 50:
+            notes.append(f'精度评分{best_score:.1f}/100，定位精度一般，建议谨慎使用')
+        else:
+            notes.append(f'精度评分{best_score:.1f}/100，定位精度较低')
+        
+        return notes
     
     def _standardize_state(self, state: str) -> str:
         """

@@ -13,6 +13,7 @@ A powerful Python application for processing apartment addresses with Placekey i
 - **Address Standardization**: Normalize and validate address formats
 - **Apartment Detection**: Intelligent identification of apartment types and units
 - **Placekey Integration**: Seamless integration with Placekey API for location intelligence
+- **Precision Optimization**: Multi-strategy address processing with precision scoring and analysis
 - **Batch Processing**: Handle large datasets efficiently
 - **Web Interface**: User-friendly web UI for easy operation
 - **Flexible Output**: Multiple output formats and customizable column mapping
@@ -59,6 +60,7 @@ python main.py batch -i examples/input_sample.csv -o data/output/result.csv
 - 🏠 **智能地址处理**: 地址标准化和格式验证
 - 🔍 **公寓类型识别**: 智能识别公寓类型和单元信息
 - 🗺️ **Placekey集成**: 无缝集成Placekey API获取位置智能数据
+- 🎯 **精度优化**: 多策略地址处理，提供精度评分和详细分析
 - 📊 **批量处理**: 支持CSV文件批量处理，适合大规模数据处理
 - 🌐 **Web界面**: 提供友好的Web操作界面
 - 🔧 **灵活配置**: 支持自定义字段映射和处理参数

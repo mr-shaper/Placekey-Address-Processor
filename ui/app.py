@@ -18,9 +18,9 @@ import shutil
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
-from src.apartment_accesscode.process_user_data import process_csv_file
-from src.apartment_accesscode.placekey_client import PlacekeyClient
-from src.apartment_accesscode.config import OUTPUT_DIR
+from src.apartment_classifier.process_user_data import process_csv_file
+from src.apartment_classifier.placekey_client import PlacekeyClient
+from src.apartment_classifier.config import OUTPUT_DIR
 
 app = Flask(__name__)
 CORS(app)

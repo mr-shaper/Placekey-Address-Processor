@@ -22,6 +22,13 @@ except ImportError:
     H3_AVAILABLE = False
     print("Warning: h3 library not available. Install with: pip install h3")
 
+try:
+    from placekey import placekey_to_geo
+    PLACEKEY_API_AVAILABLE = True
+except ImportError:
+    PLACEKEY_API_AVAILABLE = False
+    print("Warning: placekey library not available. Install with: pip install placekey")
+
 class CompletePlacekeyMapper:
     """完整的Placekey映射器，提供反向映射功能
     
@@ -79,6 +86,16 @@ class CompletePlacekeyMapper:
             
             where_part = placekey.split('@')[1]
             
+            # 首先尝试使用Placekey官方库
+            if PLACEKEY_API_AVAILABLE:
+                try:
+                    lat, lng = placekey_to_geo(placekey)
+                    if lat is not None and lng is not None:
+                        self.logger.debug(f"使用Placekey库解析坐标: ({lat}, {lng})")
+                        return (lat, lng)
+                except Exception as e:
+                    self.logger.debug(f"Placekey库解析失败: {e}")
+            
             # 如果有H3库，尝试解析H3索引
             if H3_AVAILABLE:
                 try:
@@ -91,7 +108,8 @@ class CompletePlacekeyMapper:
                 except Exception as e:
                     self.logger.debug(f"H3解析失败: {e}")
             
-            # 如果H3解析失败，使用模拟坐标
+            # 如果所有解析都失败，使用模拟坐标
+            self.logger.warning(f"无法解析Placekey坐标，使用模拟坐标: {placekey}")
             return self._simulate_coordinates_from_where(where_part)
             
         except Exception as e:
@@ -154,6 +172,8 @@ class CompletePlacekeyMapper:
                 'success': bool,
                 'address': str,
                 'coordinates': tuple,  # (lat, lng)
+                'confidence': str,  # 'high', 'medium', 'low'
+                'precision_note': str,  # 精度说明
                 'error': str
             }
         """
@@ -162,6 +182,8 @@ class CompletePlacekeyMapper:
                 'success': False,
                 'address': '',
                 'coordinates': None,
+                'confidence': 'low',
+                'precision_note': '',
                 'error': 'Empty placekey provided'
             }
         
@@ -175,17 +197,24 @@ class CompletePlacekeyMapper:
             
             # 3. 如果仍然没有坐标，返回模拟地址
             if not coordinates:
-                return self._simulate_reverse_mapping(placekey)
+                result = self._simulate_reverse_mapping(placekey)
+                result.update({
+                    'confidence': 'low',
+                    'precision_note': '使用模拟坐标，地址精度较低'
+                })
+                return result
             
             lat, lng = coordinates
             
             # 4. 使用地理编码服务反向查询地址
-            address = self._reverse_geocode(lat, lng)
-            if address:
+            address_result = self._reverse_geocode_with_confidence(lat, lng)
+            if address_result:
                 return {
                     'success': True,
-                    'address': address,
+                    'address': address_result['address'],
                     'coordinates': coordinates,
+                    'confidence': address_result['confidence'],
+                    'precision_note': address_result['precision_note'],
                     'error': ''
                 }
             
@@ -194,6 +223,10 @@ class CompletePlacekeyMapper:
             if existing_coordinates:
                 # 如果有真实坐标，保留真实坐标而不是模拟坐标
                 simulated_result['coordinates'] = existing_coordinates
+            simulated_result.update({
+                'confidence': 'low',
+                'precision_note': '地理编码失败，使用模拟地址'
+            })
             return simulated_result
             
         except Exception as e:
@@ -202,6 +235,8 @@ class CompletePlacekeyMapper:
                 'success': False,
                 'address': '',
                 'coordinates': None,
+                'confidence': 'low',
+                'precision_note': '',
                 'error': f'Reverse mapping failed: {str(e)}'
             }
             
@@ -229,15 +264,128 @@ class CompletePlacekeyMapper:
             self.logger.error(f"地理编码服务调用失败: {e}")
             return None
     
+    def _reverse_geocode_with_confidence(self, lat: float, lng: float) -> Optional[Dict]:
+        """使用地理编码服务反向查询地址，并返回置信度信息
+        
+        Args:
+            lat: 纬度
+            lng: 经度
+            
+        Returns:
+            包含地址、置信度和精度说明的字典或None
+        """
+        try:
+            if self.geocoding_service == "nominatim":
+                return self._reverse_geocode_nominatim_with_confidence(lat, lng)
+            elif self.geocoding_service == "google" and self.api_key:
+                address = self._reverse_geocode_google(lat, lng)
+                if address:
+                    return {
+                        'address': address,
+                        'confidence': 'high',
+                        'precision_note': '使用Google Maps API获取'
+                    }
+            elif self.geocoding_service == "mapbox" and self.api_key:
+                address = self._reverse_geocode_mapbox(lat, lng)
+                if address:
+                    return {
+                        'address': address,
+                        'confidence': 'high',
+                        'precision_note': '使用Mapbox API获取'
+                    }
+            else:
+                return self._reverse_geocode_nominatim_with_confidence(lat, lng)
+            
+            return None
+        except Exception as e:
+            self.logger.error(f"地理编码服务调用失败: {e}")
+            return None
+    
     def _reverse_geocode_nominatim(self, lat: float, lng: float) -> Optional[str]:
         """使用Nominatim服务进行反向地理编码"""
+        try:
+            # 首先尝试精确坐标的多个zoom级别
+            zoom_levels = [18, 17, 16, 15]  # 从最高精度到较低精度
+            
+            for zoom in zoom_levels:
+                result = self._query_nominatim_single(lat, lng, zoom)
+                if result and self._has_street_info(result):
+                    self.logger.debug(f"找到详细地址 (zoom={zoom}): {result}")
+                    return result
+                
+                # 在不同zoom级别之间添加小延迟
+                time.sleep(0.1)
+            
+            # 如果精确坐标没有找到街道信息，尝试附近坐标
+            self.logger.debug("尝试附近坐标搜索...")
+            nearby_result = self._search_nearby_coordinates(lat, lng)
+            if nearby_result:
+                return nearby_result
+            
+            # 最后返回城市级别的地址（如果有的话）
+            city_result = self._query_nominatim_single(lat, lng, 15)
+            if city_result:
+                self.logger.warning(f"只找到城市级别地址: {city_result}")
+                return city_result
+            
+            return None
+        
+        except Exception as e:
+            self.logger.error(f"Nominatim反向地理编码失败: {e}")
+            return None
+    
+    def _reverse_geocode_nominatim_with_confidence(self, lat: float, lng: float) -> Optional[Dict]:
+        """使用Nominatim服务进行反向地理编码，并返回置信度信息"""
+        try:
+            # 首先尝试精确坐标的多个zoom级别
+            zoom_levels = [18, 17, 16, 15]  # 从最高精度到较低精度
+            
+            for zoom in zoom_levels:
+                result = self._query_nominatim_single(lat, lng, zoom)
+                if result and self._has_street_info(result):
+                    self.logger.debug(f"找到详细地址 (zoom={zoom}): {result}")
+                    return {
+                        'address': result,
+                        'confidence': 'high',
+                        'precision_note': f'精确匹配 (zoom级别: {zoom})'
+                    }
+                
+                # 在不同zoom级别之间添加小延迟
+                time.sleep(0.1)
+            
+            # 如果精确坐标没有找到街道信息，尝试附近坐标
+            self.logger.debug("尝试附近坐标搜索...")
+            nearby_result = self._search_nearby_coordinates_with_confidence(lat, lng)
+            if nearby_result:
+                return nearby_result
+            
+            # 最后返回城市级别的地址（如果有的话）
+            city_result = self._query_nominatim_single(lat, lng, 15)
+            if city_result:
+                self.logger.warning(f"只找到城市级别地址: {city_result}")
+                return {
+                    'address': f"约 {city_result}",
+                    'confidence': 'low',
+                    'precision_note': '仅找到城市级别地址，精度较低'
+                }
+            
+            return None
+        
+        except Exception as e:
+            self.logger.error(f"Nominatim反向地理编码失败: {e}")
+            return None
+    
+    def _query_nominatim_single(self, lat: float, lng: float, zoom: int) -> Optional[str]:
+        """单次Nominatim查询"""
         try:
             params = {
                 'lat': lat,
                 'lon': lng,
                 'format': 'json',
                 'addressdetails': 1,
-                'zoom': 18
+                'zoom': zoom,
+                'extratags': 1,
+                'namedetails': 1
             }
             
             headers = {
@@ -258,7 +406,98 @@ class CompletePlacekeyMapper:
             return None
             
         except Exception as e:
-            self.logger.error(f"Nominatim反向地理编码失败: {e}")
+            self.logger.debug(f"单次Nominatim查询失败: {e}")
+            return None
+    
+    def _has_street_info(self, address: str) -> bool:
+        """检查地址是否包含街道信息"""
+        if not address:
+            return False
+        
+        address_lower = address.lower()
+        street_indicators = [
+            'street', 'avenue', 'boulevard', 'drive', 'lane', 'way', 'road',
+            'circle', 'court', 'place', 'terrace', 'plaza', 'parkway'
+        ]
+        
+        # 检查是否包含街道类型词汇
+        has_street_type = any(indicator in address_lower for indicator in street_indicators)
+        
+        # 检查第一部分是否包含数字（门牌号）
+        first_part = address.split(',')[0].strip()
+        has_house_number = any(char.isdigit() for char in first_part)
+        
+        return has_street_type or has_house_number
+    
+    def _search_nearby_coordinates(self, lat: float, lng: float) -> Optional[str]:
+        """搜索附近坐标以找到更详细的地址信息"""
+        try:
+            # 定义搜索半径（度数）
+            offsets = [
+                (0.0001, 0.0001),   # 约11米
+                (-0.0001, 0.0001),
+                (0.0001, -0.0001),
+                (-0.0001, -0.0001),
+                (0.0002, 0),        # 约22米
+                (-0.0002, 0),
+                (0, 0.0002),
+                (0, -0.0002)
+            ]
+            
+            for lat_offset, lng_offset in offsets:
+                new_lat = lat + lat_offset
+                new_lng = lng + lng_offset
+                
+                result = self._query_nominatim_single(new_lat, new_lng, 18)
+                if result and self._has_street_info(result):
+                    self.logger.debug(f"在附近坐标找到详细地址: {result}")
+                    return result
+                
+                # 添加小延迟避免API限制
+                time.sleep(0.1)
+            
+            return None
+            
+        except Exception as e:
+            self.logger.debug(f"附近坐标搜索失败: {e}")
+            return None
+    
+    def _search_nearby_coordinates_with_confidence(self, lat: float, lng: float) -> Optional[Dict]:
+        """搜索附近坐标以找到更详细的地址信息，并返回置信度"""
+        try:
+            # 定义搜索半径（度数）
+            offsets = [
+                (0.0001, 0.0001),   # 约11米
+                (-0.0001, 0.0001),
+                (0.0001, -0.0001),
+                (-0.0001, -0.0001),
+                (0.0002, 0),        # 约22米
+                (-0.0002, 0),
+                (0, 0.0002),
+                (0, -0.0002)
+            ]
+            
+            for lat_offset, lng_offset in offsets:
+                new_lat = lat + lat_offset
+                new_lng = lng + lng_offset
+                
+                result = self._query_nominatim_single(new_lat, new_lng, 18)
+                if result and self._has_street_info(result):
+                    distance_m = abs(lat_offset + lng_offset) * 111000  # 粗略计算距离（米）
+                    self.logger.debug(f"在附近坐标找到详细地址: {result}")
+                    return {
+                        'address': f"约 {result}",
+                        'confidence': 'medium',
+                        'precision_note': f'附近坐标匹配，距离约{distance_m:.0f}米'
+                    }
+                
+                # 添加小延迟避免API限制
+                time.sleep(0.1)
+            
+            return None
+            
+        except Exception as e:
+            self.logger.debug(f"附近坐标搜索失败: {e}")
             return None
     
     def _reverse_geocode_google(self, lat: float, lng: float) -> Optional[str]:
@@ -362,7 +601,7 @@ class CompletePlacekeyMapper:
             state = states[hash_val % len(states)]
             zip_code = f"{10000 + hash_val % 90000:05d}"
             
-            address = f"{street_number} {street_name}, {city}, {state} {zip_code}"
+            address = f"约 {street_number} {street_name}, {city}, {state} {zip_code}"
             
             self.logger.info(f"生成模拟地址: {address} (坐标: {coordinates})")
             
@@ -370,6 +609,8 @@ class CompletePlacekeyMapper:
                 'success': True,
                 'address': address,
                 'coordinates': coordinates,
+                'confidence': 'low',
+                'precision_note': '模拟地址，仅供参考',
                 'error': 'Simulated address (no geocoding service available)'
             }
             
@@ -379,6 +620,8 @@ class CompletePlacekeyMapper:
                 'success': False,
                 'address': '',
                 'coordinates': None,
+                'confidence': 'low',
+                'precision_note': '',
                 'error': f'Failed to generate simulated address: {str(e)}'
             }
     
