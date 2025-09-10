@@ -564,9 +564,20 @@ class IntegrationProcessor:
             if not placekey:
                 return {'success': False, 'error': 'No placekey available'}
             
-            # 执行反向映射
+            # 获取Placekey API返回的真实坐标
+            existing_coordinates = None
+            if 'latitude' in placekey_result and 'longitude' in placekey_result:
+                try:
+                    lat = float(placekey_result['latitude'])
+                    lng = float(placekey_result['longitude'])
+                    existing_coordinates = (lat, lng)
+                    self.logger.debug(f"使用Placekey API坐标: ({lat}, {lng})")
+                except (ValueError, TypeError) as e:
+                    self.logger.warning(f"无法解析Placekey API坐标: {e}")
+            
+            # 执行反向映射，传递真实坐标
             self.logger.debug(f"执行Placekey反向映射: {placekey}")
-            mapping_result = self.reverse_mapper.placekey_to_address(placekey)
+            mapping_result = self.reverse_mapper.placekey_to_address(placekey, existing_coordinates)
             
             if mapping_result and mapping_result.get('success'):
                 self.stats['reverse_mapping_success'] += 1

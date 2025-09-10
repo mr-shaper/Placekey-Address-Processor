@@ -119,26 +119,34 @@ class CompletePlacekeyMapper:
             return None
     
     def _simulate_coordinates_from_where(self, where_part: str) -> Tuple[float, float]:
-        """基于Where部分生成模拟坐标"""
-        # 使用where_part的哈希值生成一致的模拟坐标
-        hash_val = hash(where_part) % 1000000
+        """基于Where部分生成模拟坐标
         
-        # 生成美国境内的坐标范围
-        lat = 25.0 + (hash_val % 2000) / 100.0  # 25-45度纬度
-        lng = -125.0 + (hash_val % 5000) / 100.0  # -125到-75度经度
+        注意：这个方法只在无法解析真实坐标时使用
+        生成的坐标应该在合理的地理范围内
+        """
+        # 使用where_part的哈希值生成一致的模拟坐标
+        hash_val = hash(where_part) % 100000
+        
+        # 生成美国本土的坐标范围（更精确的范围）
+        # 美国本土纬度范围：约24.5°N到49.4°N
+        # 美国本土经度范围：约-125°W到-66.9°W
+        lat = 30.0 + (hash_val % 1500) / 100.0  # 30-45度纬度（主要人口区域）
+        lng = -120.0 + (hash_val % 4000) / 100.0  # -120到-80度经度（主要人口区域）
         
         return (lat, lng)
     
-    def placekey_to_address(self, placekey: str) -> Optional[Dict]:
+    def placekey_to_address(self, placekey: str, existing_coordinates: Optional[Tuple[float, float]] = None) -> Optional[Dict]:
         """将Placekey转换为地址信息
         
         基于以下策略：
-        1. 解析Placekey的Where部分获取坐标
-        2. 使用地理编码服务反向查询地址
-        3. 如果失败，返回模拟地址
+        1. 优先使用已有的准确坐标（来自Placekey API）
+        2. 如果没有已有坐标，解析Placekey的Where部分获取坐标
+        3. 使用地理编码服务反向查询地址
+        4. 如果失败，返回模拟地址
         
         Args:
             placekey: Placekey字符串
+            existing_coordinates: 已有的准确坐标 (lat, lng)
             
         Returns:
             包含地址信息的字典，格式：
@@ -158,14 +166,20 @@ class CompletePlacekeyMapper:
             }
         
         try:
-            # 1. 解析Placekey获取坐标
-            coordinates = self._parse_placekey_where(placekey)
+            # 1. 优先使用已有的准确坐标
+            coordinates = existing_coordinates
+            
+            # 2. 如果没有已有坐标，尝试解析Placekey获取坐标
+            if not coordinates:
+                coordinates = self._parse_placekey_where(placekey)
+            
+            # 3. 如果仍然没有坐标，返回模拟地址
             if not coordinates:
                 return self._simulate_reverse_mapping(placekey)
             
             lat, lng = coordinates
             
-            # 2. 使用地理编码服务反向查询地址
+            # 4. 使用地理编码服务反向查询地址
             address = self._reverse_geocode(lat, lng)
             if address:
                 return {
@@ -175,8 +189,12 @@ class CompletePlacekeyMapper:
                     'error': ''
                 }
             
-            # 3. 如果地理编码失败，返回模拟地址
-            return self._simulate_reverse_mapping(placekey)
+            # 5. 如果地理编码失败，返回模拟地址（但保留真实坐标）
+            simulated_result = self._simulate_reverse_mapping(placekey)
+            if existing_coordinates:
+                # 如果有真实坐标，保留真实坐标而不是模拟坐标
+                simulated_result['coordinates'] = existing_coordinates
+            return simulated_result
             
         except Exception as e:
             self.logger.error(f"Placekey反向映射失败: {e}")
