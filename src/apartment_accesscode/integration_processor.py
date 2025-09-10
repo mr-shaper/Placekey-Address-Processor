@@ -244,8 +244,11 @@ class IntegrationProcessor:
         self.reverse_mapper = None
         if CompletePlacekeyMapper:
             try:
-                self.reverse_mapper = CompletePlacekeyMapper()
-                self.logger.info("Placekey反向映射器初始化成功")
+                self.reverse_mapper = CompletePlacekeyMapper(api_key=api_key)
+                if api_key:
+                    self.logger.info("Placekey反向映射器初始化成功（使用API密钥）")
+                else:
+                    self.logger.info("Placekey反向映射器初始化成功（模拟模式）")
             except Exception as e:
                 self.logger.warning(f"Placekey反向映射器初始化失败: {e}")
         
